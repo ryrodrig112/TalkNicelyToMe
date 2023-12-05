@@ -5,19 +5,15 @@ use_gpu = torch.cuda.is_available()
 
 class EncoderBasic(nn.Module):
     # modified from https://github.com/unnir/cVAE/blob/master/cvae.py
-    def __init__(self, embedding, feature_size, latent_size, class_size):
-        super(EncoderLSTM, self).__init__()
-        self.vocab_size, self.embedding_size = embedding.size()
-        self.feature_size = feature_size
+    def __init__(self, embedding_size, feature_size, latent_size, class_size):
+        super(EncoderBasic, self).__init__()
+        self.embedding_size = embedding_size # vector size of a single token embedding
+        self.feature_size = feature_size # number of tokens in a document
         self.latent_size = latent_size
         self.class_size = class_size
 
-        # Create word embedding
-        self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
-        self.embedding.weight.data.copy_(embedding)
-
         # Layers
-        self.enc0  = nn.Linear(self.embedding_size * feature_size + class_size, 400)
+        self.enc0  = nn.Linear(feature_size  * self.embedding_size + class_size, 400)
         self.enc11 = nn.Linear(400, latent_size)
         self.enc12 = nn.Linear(400, latent_size)
 
@@ -25,12 +21,9 @@ class EncoderBasic(nn.Module):
     
     def forward(self, x, c): # Q(z|x, c)
         '''
-        #TODO: determine how to fix feature size (fix each sentence to 20 words? fill with OOV? and truncate? not great) 
-        x: (bs, feature size)  
+        x: (bs, feature size * embedding_size)
         c: (bs, class_size)
         '''
-        x = self.embedding(x)
-
         inputs = torch.cat([x, c], 1) # (bs, feature_size*embedding_size+class_size)
         h1 = self.elu(self.enc0(inputs))
         out = self.enc11(h1)
