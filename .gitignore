@@ -163,3 +163,5 @@ cython_debug/
 # files
 *example.py
 *example.ipynb
+.idea/
+models/
