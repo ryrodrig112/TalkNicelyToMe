@@ -47,10 +47,14 @@ class PolitenessData(Dataset):
         return len(self.unembedded_docs)
 
     def __getitem__(self, idx):
-        x = {"Unembedded": self.unembedded_docs[idx],
-             "Embedded": self.embedded_docs[idx, :, :]}
-        y = {"Politeness Score": self.politeness_scores[idx],
-             "Length": self.lens[idx]}
+        # x = {"Unembedded": self.unembedded_docs[idx],
+        #      "Embedded": self.embedded_docs[idx, :, :]}
+        # y = {"Politeness Score": self.politeness_scores[idx],
+        #      "Length": self.lens[idx]}
+        # unembed = self.unembedded_docs[idx]
+        embed = self.embedded_docs[idx, :, :]
+        score = self.politeness_scores[idx]
+        doc_len = self.lens[idx]
 
-        return x, y
+        return embed, score, doc_len
 

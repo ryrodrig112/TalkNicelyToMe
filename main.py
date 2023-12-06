@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import torch 
 import torch.nn.functional as F
 
-from .backbone import cvae 
-from .src.utils import PolitenessData
+from backbone import cvae 
+from src.utils import PolitenessData
 
 # argparse inputs
 num_epochs = 100
@@ -22,8 +22,8 @@ torch.backends.cudnn.enabled = False
 torch.backends.cudnn.deterministic = True
 
 # make our model directory
-model_dir = os.path.join('.', 'model', run_name)
-os.makedirs(model_dir)
+model_dir = os.path.join('.', 'models', run_name)
+os.makedirs(model_dir, exist_ok=True)
 
 # load data 
 data_path = './data/fil_politeness_data.csv'
@@ -32,7 +32,6 @@ embedding_path = './models/word2vec-google-news-300.model'
 # create datasets and dataloaders
 dataset = PolitenessData(data_path, embedding_path)
 validation_split = .2
-shuffle_dataset = True
 
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
@@ -42,7 +41,7 @@ train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
 val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
 
 # init cvae 
-model = cvae.CVAE()
+model = cvae.CVAE(class_size = 1) # class_size = 25 if we round then one_hot
 
 # init optimizer
 optimizer = torch.optim.SGD(
@@ -78,13 +77,14 @@ def loss_function(data, recon_x, mu, logvar):
 tr_losses = []
 val_losses = []
 for epoch in range(num_epochs): 
+    print(f"epoch {epoch}")
     ## train
     model.train()
     tr_loss = 0 
-    for i, (data, c) in enumerate(train_dl):
-        x = data["Embedded"]
-        c = torch.nn.functional.one_hot(data["Politeness Score"], num_classes=25)
-
+    for i, (x, c, _) in enumerate(train_dl):
+        c = c.unsqueeze_(1).to(torch.float32)
+        # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
+        x = x.flatten(start_dim = 1)
         output, mu, logvar = model(x, c)
 
         loss = loss_function(x, output, mu, logvar)
@@ -97,10 +97,10 @@ for epoch in range(num_epochs):
     ## validation
     model.eval()
     val_loss = 0
-    for i, (data, c) in enumerate(val_dl):
-        x = data["Embedded"]
-        c = torch.nn.functional.one_hot(data["Politeness Score"], num_classes=25)
-
+    for i, (x, c, _)  in enumerate(val_dl):
+        c = c.unsqueeze_(1).to(torch.float32)
+        # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
+        x = x.flatten(start_dim = 1)
         output, mu, logvar = model(x, c)
 
         loss = loss_function(x, output, mu, logvar)
