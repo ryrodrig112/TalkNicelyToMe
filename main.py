@@ -11,7 +11,7 @@ from src.utils import PolitenessData
 # argparse inputs
 num_epochs = 100
 lr = 0.001
-batch_size = 16
+batch_size = 10
 random_seed= 42
 run_name = 'test_run0'
 
@@ -70,9 +70,11 @@ def loss_function(data, recon_x, mu, logvar):
         
         p(z) here is the standard normal distribution with mean 0 and identity covariance.
     """
-    BCE = F.binary_cross_entropy(recon_x, data, reduction='sum') # BCE = -Negative Log-likelihood
+    MSE = F.mse_loss(recon_x, data, reduction='sum')
+    # BCE = F.binary_cross_entropy(recon_x, data, reduction='sum') # BCE = -Negative Log-likelihood
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) # KL Divergence b/w q_\phi(z|x) || p(z)
-    return BCE + KLD
+    # return BCE + KLD
+    return MSE + KLD
 
 tr_losses = []
 val_losses = []
@@ -82,11 +84,12 @@ for epoch in range(num_epochs):
     model.train()
     tr_loss = 0 
     for i, (x, c, _) in enumerate(train_dl):
+        actual_bs = x.shape[0]
         c = c.unsqueeze_(1).to(torch.float32)
         # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
         x = x.flatten(start_dim = 1)
         output, mu, logvar = model(x, c)
-        output.reshape((batch_size, 76, 300))
+        output.reshape((actual_bs, 76, 300))
 
         loss = loss_function(x, output, mu, logvar)
         tr_loss += loss
@@ -99,19 +102,20 @@ for epoch in range(num_epochs):
     model.eval()
     val_loss = 0
     for i, (x, c, _)  in enumerate(val_dl):
+        actual_bs = x.shape[0]
         c = c.unsqueeze_(1).to(torch.float32)
         # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
         x = x.flatten(start_dim = 1)
         output, mu, logvar = model(x, c)
-        output.reshape((batch_size, 76, 300))
+        output.reshape((actual_bs, 76, 300))
 
         loss = loss_function(x, output, mu, logvar)
         val_loss += loss
     val_losses.append(val_loss/val_size)
 
     # plot performance and save model
-    plt.plot(tr_losses, 'b', label='train loss')
-    plt.plot(val_losses, 'r', label='validataion loss')
+    plt.plot([l.item() for l in tr_losses], 'b', label='train loss')
+    plt.plot([l.item() for l in val_losses], 'r', label='validataion loss')
     plt.legend()
     plt.savefig(model_dir + "train_test_auc.png")
     plt.close()
