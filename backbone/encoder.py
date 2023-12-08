@@ -16,7 +16,6 @@ class EncoderBasic(nn.Module):
         self.enc0  = nn.Linear(feature_size  * self.embedding_size + class_size, 400)
         self.enc11 = nn.Linear(400, latent_size)
         self.enc12 = nn.Linear(400, latent_size)
-
         self.elu = nn.ELU()
     
     def forward(self, x, c): # Q(z|x, c)
