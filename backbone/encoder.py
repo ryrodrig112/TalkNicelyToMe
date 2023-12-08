@@ -26,9 +26,9 @@ class EncoderBasic(nn.Module):
         '''
         inputs = torch.cat([x, c], 1) # (bs, feature_size*embedding_size+class_size)
         h1 = self.elu(self.enc0(inputs))
-        out = self.enc11(h1)
-        z = self.enc12(h1)
-        return out, z
+        z_mu = self.enc11(h1)
+        z_var = self.enc12(h1)
+        return z_mu, z_var
 
 
 
