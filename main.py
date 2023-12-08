@@ -86,6 +86,7 @@ for epoch in range(num_epochs):
         # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
         x = x.flatten(start_dim = 1)
         output, mu, logvar = model(x, c)
+        output.reshape((batch_size, 76, 300))
 
         loss = loss_function(x, output, mu, logvar)
         tr_loss += loss
@@ -102,6 +103,7 @@ for epoch in range(num_epochs):
         # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
         x = x.flatten(start_dim = 1)
         output, mu, logvar = model(x, c)
+        output.reshape((batch_size, 76, 300))
 
         loss = loss_function(x, output, mu, logvar)
         val_loss += loss

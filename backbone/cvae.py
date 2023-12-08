@@ -16,6 +16,7 @@ class CVAE(nn.Module):
             )
 
         self.decoder = DecoderBasic(
+            embedding_size,
             feature_size,
             latent_size,
             class_size,
