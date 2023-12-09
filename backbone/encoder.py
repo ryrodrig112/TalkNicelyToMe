@@ -16,7 +16,8 @@ class EncoderBasic(nn.Module):
         self.enc0  = nn.Linear(feature_size  * self.embedding_size + class_size, 400)
         self.enc11 = nn.Linear(400, latent_size)
         self.enc12 = nn.Linear(400, latent_size)
-        self.elu = nn.ELU()
+
+        self.relu = nn.ReLU()
     
     def forward(self, x, c): # Q(z|x, c)
         '''
@@ -24,7 +25,7 @@ class EncoderBasic(nn.Module):
         c: (bs, class_size)
         '''
         inputs = torch.cat([x, c], 1) # (bs, feature_size*embedding_size+class_size)
-        h1 = self.elu(self.enc0(inputs))
+        h1 = self.relu(self.enc0(inputs))
         z_mu = self.enc11(h1)
         z_var = self.enc12(h1)
         return z_mu, z_var

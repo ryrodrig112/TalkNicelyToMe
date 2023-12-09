@@ -1,5 +1,6 @@
 import os
 import argparse
+import numpy as np
 
 import matplotlib.pyplot as plt
 import torch 
@@ -9,9 +10,9 @@ from backbone import cvae
 from src.utils import PolitenessData
 
 # argparse inputs
-num_epochs = 100
-lr = 0.001
-batch_size = 10
+num_epochs = 30
+lr = 3e-8
+batch_size = 16
 random_seed= 42
 run_name = 'test_run0'
 
@@ -31,14 +32,13 @@ embedding_path = './models/word2vec-google-news-300.model'
 
 # create datasets and dataloaders
 dataset = PolitenessData(data_path, embedding_path)
-validation_split = .2
 
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
 train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
 
-train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size)
-val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
+train_dl = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle = True)
+val_dl = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle = True)
 
 # init cvae 
 model = cvae.CVAE(class_size = 1) # class_size = 25 if we round then one_hot
@@ -49,16 +49,17 @@ optimizer = torch.optim.SGD(
     lr = lr, 
     momentum=0.8,
     )
+optimizer.zero_grad()
 
 # init scheduler
 scheduler = torch.optim.lr_scheduler.StepLR(
     optimizer, 
-    step_size=60, 
+    step_size=10, 
     gamma=0.5,
     )
 
 # define loss function
-def loss_function(data, recon_x, mu, logvar):
+def loss_function(data, recon_x, mu, logvar, beta = 0.001):
     """Computes the loss = -ELBO = Negative Log-Likelihood + KL Divergence.
     
     Args: 
@@ -70,11 +71,15 @@ def loss_function(data, recon_x, mu, logvar):
         
         p(z) here is the standard normal distribution with mean 0 and identity covariance.
     """
-    MSE = F.mse_loss(recon_x, data, reduction='sum')
-    # BCE = F.binary_cross_entropy(recon_x, data, reduction='sum') # BCE = -Negative Log-likelihood
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) # KL Divergence b/w q_\phi(z|x) || p(z)
+
+    MAE = F.l1_loss(recon_x, data, reduction='sum')
+    return 0.001*MAE + KLD
+    # MSE = F.mse_loss(recon_x, data, reduction='sum')
+    # return MSE + beta * KLD
+
+    # BCE = F.binary_cross_entropy(recon_x, data, reduction='sum') # BCE = -Negative Log-likelihood
     # return BCE + KLD
-    return MSE + KLD
 
 tr_losses = []
 val_losses = []
@@ -82,7 +87,7 @@ for epoch in range(num_epochs):
     print(f"epoch {epoch}")
     ## train
     model.train()
-    tr_loss = 0 
+    tr_loss_e = []
     for i, (x, c, _) in enumerate(train_dl):
         actual_bs = x.shape[0]
         c = c.unsqueeze_(1).to(torch.float32)
@@ -92,35 +97,41 @@ for epoch in range(num_epochs):
         output.reshape((actual_bs, 76, 300))
 
         loss = loss_function(x, output, mu, logvar)
-        tr_loss += loss
+        tr_loss_e.append(loss.item())
         loss.backward()
         optimizer.step()
-        scheduler.step()
-    tr_losses.append(tr_loss/train_size)
+
+    scheduler.step()
+    tr_losses.append(np.mean(tr_loss_e))
+    print(f"train loss {tr_losses[-1]}")
 
     ## validation
     model.eval()
-    val_loss = 0
-    for i, (x, c, _)  in enumerate(val_dl):
-        actual_bs = x.shape[0]
-        c = c.unsqueeze_(1).to(torch.float32)
-        # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
-        x = x.flatten(start_dim = 1)
-        output, mu, logvar = model(x, c)
-        output.reshape((actual_bs, 76, 300))
+    val_loss_e = []
+    with torch.no_grad():
+        for i, (x, c, _)  in enumerate(val_dl):
+            actual_bs = x.shape[0]
+            c = c.unsqueeze_(1).to(torch.float32)
+            # c = torch.nn.functional.one_hot(torch.round(c), num_classes=25)
+            x = x.flatten(start_dim = 1)
+            
+            output, mu, logvar = model(x, c)
+            output.reshape((actual_bs, 76, 300))
 
-        loss = loss_function(x, output, mu, logvar)
-        val_loss += loss
-    val_losses.append(val_loss/val_size)
+            loss = loss_function(x, output, mu, logvar)
+            val_loss_e.append(loss.item())
+        val_losses.append(np.mean(val_loss_e))
+        print(f"val loss {val_losses[-1]}")
 
     # plot performance and save model
     plt.plot([l.item() for l in tr_losses], 'b', label='train loss')
     plt.plot([l.item() for l in val_losses], 'r', label='validataion loss')
     plt.legend()
-    plt.savefig(model_dir + "train_test_auc.png")
+    plt.savefig(os.path.join(model_dir, "train_val_loss.png"))
     plt.close()
     
-    if epoch%10 == 0: 
-        torch.save(model, model_dir + f"epoch_{epoch}_{tr_losses[-1]}_{val_losses[-1]}.png" )
+    if epoch%10 == 9: 
+        torch.save(model, os.path.join(model_dir, f"epoch_{epoch}_{tr_losses[-1]}_{val_losses[-1]}.pth"))
+
 
 # test separately
