@@ -16,12 +16,12 @@ class DecoderBasic(nn.Module):
         self.dec0 = nn.Linear(latent_size + class_size, 400)
         self.dec1 = nn.Linear(400, feature_size  * self.embedding_size)
 
-        self.elu = nn.ELU()
+        self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
         
     def forward(self, z, c):
         inputs = torch.cat([z, c], 1) # (bs, latent_size+class_size)
-        h3 = self.elu(self.dec0(inputs))
+        h3 = self.relu(self.dec0(inputs))
         h4 = self.dec1(h3)
 
         return self.sigmoid(h4)
