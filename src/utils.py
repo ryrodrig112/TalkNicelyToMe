@@ -2,6 +2,7 @@ import torch
 import pandas as pd
 from torch.utils.data import DataLoader, Dataset
 from gensim.models import KeyedVectors
+import nltk
 
 class PolitenessData(Dataset):
     """
@@ -58,3 +59,18 @@ class PolitenessData(Dataset):
 
         return embed, score, doc_len
 
+def embedding_vectors_to_words(embedding_vector, embedding_model):
+    docs = []
+    for doc in range(len(embedding_vector)):
+        doc_tokens = []
+        for word in range(76):
+            closest_word = embedding_model.most_similar(positive=[embedding_vector[doc, word, :]], topn=1)[0][0]
+            doc_tokens.append(closest_word)
+        docs.append(doc_tokens)
+    return docs
+
+
+def calc_edit_distance_ratio(x: list, x_recon: list):
+    n = max(len(x), len(x_recon))
+    distance = nltk.edit_distance(x, x_recon)
+    return distance / n
