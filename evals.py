@@ -19,13 +19,14 @@ torch.backends.cudnn.enabled = False
 torch.backends.cudnn.deterministic = True
 
 # set load and save paths
-train_data = '../data/train_data.csv'
-test_data = '../data/test_data.csv'
-model_dir = "../models/cvae/test_run0"
-model_params_file = 'epoch_29_27.904600340138924_27.380401288761814.pth'
-embedding_dir = '../models/embeddings/'
+train_data = './data/train_data.csv'
+test_data = './data/test_data.csv'
+embedding_dir = './models/embeddings'
 embedding_file = "word2vec-google-news-300.model"
-results_dir = "../data/eval_results"
+results_dir = "./data/eval_results"
+
+model_dir = "/Users/JuliaYang/Desktop/Duke/Fall2023/IDS703/TalkNicelyToMe/models/test_run3"
+model_params_file = 'best_model.pth'
 
 # create datasets and dataloaders
 print("Loading Data")
@@ -37,7 +38,7 @@ print("Loading Models")
 model = cvae.CVAE(class_size = 1)
 model.load_state_dict(torch.load(os.path.join(model_dir, model_params_file)))
 embedding_model = KeyedVectors.load(os.path.join(embedding_dir, embedding_file))
-file = open("../data/google-10000-english.txt", "r")
+file = open("./data/google-10000-english.txt", "r")
 data = file.read()
 vocab = data.split("\n")
 file.close()
@@ -90,7 +91,7 @@ reconstructed_docs = embedding_vectors_to_words(x_recon, filtered_embedding_mode
 
 edit_distances = []
 for i in range(len(docs)):
-    edit_distance_ratio = calc_edit_distance_ratio(docs[i], docs[i])
+    edit_distance_ratio = calc_edit_distance_ratio(docs[i], reconstructed_docs[i])
     edit_distances.append(edit_distance_ratio)
 
 #Save Quantitative Evaluation

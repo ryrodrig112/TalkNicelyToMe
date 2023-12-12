@@ -14,7 +14,7 @@ num_epochs = 30
 lr = 3e-8
 batch_size = 16
 random_seed= 42
-run_name = 'test_run0'
+run_name = 'test_run3'
 
 # set up torch
 torch.manual_seed(random_seed)
@@ -27,8 +27,8 @@ model_dir = os.path.join('.', 'models', run_name)
 os.makedirs(model_dir, exist_ok=True)
 
 # load data 
-data_path = './data/fil_politeness_data.csv'
-embedding_path = './models/word2vec-google-news-300.model'
+data_path = './data/train_data.csv'
+embedding_path = './models/embeddings/word2vec-google-news-300.model'
 
 # create datasets and dataloaders
 dataset = PolitenessData(data_path, embedding_path)
@@ -83,6 +83,7 @@ def loss_function(data, recon_x, mu, logvar, beta = 0.001):
 
 tr_losses = []
 val_losses = []
+best_val_loss = np.inf
 for epoch in range(num_epochs): 
     print(f"epoch {epoch}")
     ## train
@@ -129,9 +130,12 @@ for epoch in range(num_epochs):
     plt.legend()
     plt.savefig(os.path.join(model_dir, "train_val_loss.png"))
     plt.close()
-    
-    if epoch%10 == 9: 
-        torch.save(model, os.path.join(model_dir, f"epoch_{epoch}_{tr_losses[-1]}_{val_losses[-1]}.pth"))
 
+    # save models
+    if val_losses[-1] < best_val_loss: 
+        torch.save(model.state_dict(), os.path.join(model_dir, f"best_model.pth"))
+        best_val_loss = val_losses[-1]
+    if epoch%10 == 9: 
+        torch.save(model.state_dict(), os.path.join(model_dir, f"epoch_{epoch}_{tr_losses[-1]}_{val_losses[-1]}.pth"))
 
 # test separately

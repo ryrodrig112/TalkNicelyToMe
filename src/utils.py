@@ -71,7 +71,6 @@ def embedding_vectors_to_words(embedding_vector, embedding_model):
 
 
 def calc_edit_distance_ratio(x: list, x_recon: list):
-    n = len(x)
-    x_recon = x_recon[:n]
+    n = max(len(x), len(x_recon))
     distance = nltk.edit_distance(x, x_recon)
     return distance / n
