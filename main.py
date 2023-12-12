@@ -10,11 +10,26 @@ from backbone import cvae
 from src.utils import PolitenessData
 
 # argparse inputs
-num_epochs = 30
-lr = 3e-8
-batch_size = 16
-random_seed= 42
-run_name = 'test_run3'
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--run_name", type=str, required=True, help="Name of the run that will also be your model folder's name.")
+parser.add_argument("--num_epochs", type=int, default=30)
+parser.add_argument("--learning_rate", type=float, default=3e-8)
+parser.add_argument("--batch_size", type=int, default=16)
+parser.add_argument("--random_seed", type=int, default=42)
+parser.add_argument("--data_path", type=str, default='./data/train_data.csv', help="Path to training data csv (see README for details)")
+parser.add_argument("--embedding_path", type=str, default='./models/embeddings/word2vec-google-news-300.model', help="Path to the gensim embeddings model")
+args = parser.parse_args()
+
+num_epochs = args.num_epochs
+lr = args.learning_rate
+batch_size = args.batch_size
+random_seed= args.random_seed
+run_name = args.run_name
+
+# load data 
+data_path = args.data_path
+embedding_path = args.embedding_path
 
 # set up torch
 torch.manual_seed(random_seed)
@@ -25,10 +40,6 @@ torch.backends.cudnn.deterministic = True
 # make our model directory
 model_dir = os.path.join('.', 'models', run_name)
 os.makedirs(model_dir, exist_ok=True)
-
-# load data 
-data_path = './data/train_data.csv'
-embedding_path = './models/embeddings/word2vec-google-news-300.model'
 
 # create datasets and dataloaders
 dataset = PolitenessData(data_path, embedding_path)
@@ -59,7 +70,7 @@ scheduler = torch.optim.lr_scheduler.StepLR(
     )
 
 # define loss function
-def loss_function(data, recon_x, mu, logvar, beta = 0.001):
+def loss_function(data, recon_x, mu, logvar):
     """Computes the loss = -ELBO = Negative Log-Likelihood + KL Divergence.
     
     Args: 
@@ -78,8 +89,8 @@ def loss_function(data, recon_x, mu, logvar, beta = 0.001):
     # MSE = F.mse_loss(recon_x, data, reduction='sum')
     # return MSE + beta * KLD
 
-    # BCE = F.binary_cross_entropy(recon_x, data, reduction='sum') # BCE = -Negative Log-likelihood
-    # return BCE + KLD
+    # BCE = F.binary_cross_entropy_with_logits(recon_x, data, reduction='sum') # BCE = -Negative Log-likelihood
+    # return 0.001*BCE + KLD
 
 tr_losses = []
 val_losses = []

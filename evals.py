@@ -1,14 +1,24 @@
 import os
 import argparse
-import nltk
-import matplotlib.pyplot as plt
 import pandas as pd
 import torch
-import torch.nn.functional as F
 from backbone import cvae
 from src.utils import *
 from gensim.models import KeyedVectors
 import numpy as np
+
+# argparse inputs
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--run_name", type=str, required=True, help="Name of the run which you intend to evaluate")
+parser.add_argument("--model_name", type=str, default='best_model.pth', help="Name of the model which you want to evaluate")
+parser.add_argument("--learning_rate", type=float, default=3e-8)
+parser.add_argument("--batch_size", type=int, default=16)
+parser.add_argument("--random_seed", type=int, default=42)
+parser.add_argument("--train_data", type=str, default='./data/train_data.csv', help="Path to training data csv (see README for details)")
+parser.add_argument("--test_data", type=str, default='./data/test_data.csv', help="Path to test data csv (see README for details)")
+parser.add_argument("--embedding_path", type=str, default='./models/embeddings/word2vec-google-news-300.model', help="Path to the gensim embeddings model")
+args = parser.parse_args()
 
 # set up torch
 random_seed= 42
@@ -19,25 +29,24 @@ torch.backends.cudnn.enabled = False
 torch.backends.cudnn.deterministic = True
 
 # set load and save paths
-train_data = './data/train_data.csv'
-test_data = './data/test_data.csv'
-embedding_dir = './models/embeddings'
-embedding_file = "word2vec-google-news-300.model"
+train_data = args.train_data
+test_data = args.test_data
+embedding_path = args.embedding_path
 results_dir = "./data/eval_results"
 
-model_dir = "/Users/JuliaYang/Desktop/Duke/Fall2023/IDS703/TalkNicelyToMe/models/test_run3"
-model_params_file = 'best_model.pth'
+model_dir = os.path.join('./models', args.run_name)
+model_params_file = args.model_name
 
 # create datasets and dataloaders
 print("Loading Data")
-dataset = PolitenessData(test_data, os.path.join(embedding_dir, embedding_file))
+dataset = PolitenessData(test_data, embedding_path)
 loader = torch.utils.data.DataLoader(dataset, batch_size=len(dataset))
 
 # init and load CVAE
 print("Loading Models")
 model = cvae.CVAE(class_size = 1)
 model.load_state_dict(torch.load(os.path.join(model_dir, model_params_file)))
-embedding_model = KeyedVectors.load(os.path.join(embedding_dir, embedding_file))
+embedding_model = KeyedVectors.load(embedding_path)
 file = open("./data/google-10000-english.txt", "r")
 data = file.read()
 vocab = data.split("\n")
